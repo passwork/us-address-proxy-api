@@ -9,8 +9,8 @@ httpx==0.27.0
 bcrypt==4.1.3
 python-multipart==0.0.9
 
-# PostgreSQL driver (optional, only needed for PostgreSQL deployment)
-# asyncpg==0.29.0
+# PostgreSQL driver (required for Docker Compose with PostgreSQL)
+asyncpg==0.29.0
 
 # Testing
 pytest==8.2.1

@@ -5,7 +5,7 @@
 ## 技术栈
 
 - **Web 框架**: FastAPI 0.111.0
-- **数据库**: SQLite (开发) / PostgreSQL (生产)
+- **数据库**: PostgreSQL (Docker 默认) / SQLite (本地开发/测试)
 - **ORM**: SQLAlchemy 2.0 (async)
 - **缓存/会话**: Redis
 - **密码哈希**: bcrypt
@@ -27,12 +27,13 @@
 git clone https://github.com/passwork/us-address-proxy-api.git
 cd us-address-proxy-api
 
-# 2. 启动服务（包含 Redis + App）
+# 2. 启动全栈服务（包含 PostgreSQL + Redis + App）
 docker-compose up --build
 
 # 3. 等待日志出现以下信息即表示启动成功：
-# INFO:     Application startup complete.
-# INFO:     Uvicorn running on http://0.0.0.0:8000
+# us_address_app  | Created user: test
+# us_address_app  | INFO:     Application startup complete.
+# us_address_app  | INFO:     Uvicorn running on http://0.0.0.0:8000
 ```
 
 服务启动后：
@@ -42,10 +43,27 @@ docker-compose up --build
 
 ## 本地开发启动
 
-> 适用于已安装 Python 3.11+ 和 Redis 的环境。
+> 适用于已安装 Python 3.11+ 的环境。数据库使用 SQLite，Redis 可用 Docker 快速启动。
+
+### 一键脚本（推荐）
 
 ```bash
-# 1. 安装依赖
+# Linux / macOS
+bash scripts/setup_venv.sh
+
+# Windows PowerShell
+.\scripts\setup_venv.ps1
+```
+
+脚本会自动创建 venv、安装依赖并运行测试。
+
+### 手动步骤
+
+```bash
+# 1. 创建虚拟环境并安装依赖
+python -m venv venv
+source venv/bin/activate        # Linux/Mac
+# .\venv\Scripts\activate       # Windows
 pip install -r requirements.txt
 
 # 2. 启动 Redis（如未安装，可用 Docker 快速启动）
@@ -92,7 +110,7 @@ uvicorn app.main:app --reload --port 8000
 │   └── main.py        # FastAPI 入口
 ├── tests/             # TDD 测试套件 (28 个用例)
 ├── docs/              # 项目文档 + Postman Collection
-├── scripts/           # 数据初始化脚本
+├── scripts/           # 数据初始化 + venv 安装脚本
 ├── alembic/           # 数据库迁移
 ├── Dockerfile         # Docker 镜像构建
 ├── docker-compose.yml # Docker Compose 编排

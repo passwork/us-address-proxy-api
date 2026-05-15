@@ -1,6 +1,18 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: us_address_postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: us_address_proxy
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   redis:
     image: redis:7-alpine
     container_name: us_address_redis
@@ -13,10 +25,15 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - DATABASE_URL=postgresql+asyncpg://user:password@postgres:5432/us_address_proxy
       - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=sqlite+aiosqlite:///./dev.db
     depends_on:
+      - postgres
       - redis
     command: >
-      sh -c "python scripts/init_db.py &&
+      sh -c "sleep 3 &&
+             python scripts/init_db.py &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  postgres_data:
