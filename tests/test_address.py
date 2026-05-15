@@ -10,7 +10,7 @@
 - https://www.meiguodizhi.com/api/v1/dz
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -45,14 +45,14 @@ class TestAddressSuccess:
 
         使用 unittest.mock 拦截 httpx.AsyncClient.post。
         """
-        mock_response = AsyncMock()
+        mock_response = MagicMock()
         mock_response.json.return_value = {
             "address": {"Address": "Mock St", "City": "MockCity"},
             "status": "ok"
         }
-        mock_response.raise_for_status = AsyncMock()
+        mock_response.raise_for_status.return_value = None
 
-        with patch("httpx.AsyncClient.post", return_value=mock_response) as mock_post:
+        with patch("httpx.AsyncClient.post", AsyncMock(return_value=mock_response)) as mock_post:
             resp = await client.get("/api/v1/address/generate", headers=auth_headers)
 
             assert resp.status_code == 200
@@ -70,59 +70,68 @@ class TestAddressFailure:
     async def test_address_service_timeout_returns_500(self, client, auth_headers):
         """
         【降级】外部 API 超时时，返回 code=500，msg 提示服务不可用。
-
-        开发约束：
-        - httpx 必须设置 timeout（建议 10s）
-        - 不允许抛出未捕获的异常导致 500 HTML 页面
         """
-        with patch("httpx.AsyncClient.post", side_effect=TimeoutError("Connection timed out")):
-            resp = await client.get("/api/v1/address/generate", headers=auth_headers)
-            body = resp.json()
+        import app.services.address_service as addr_svc
 
-            assert resp.status_code == 500
-            assert body["code"] == 500
-            assert "暂不可用" in body["msg"] or "timeout" in body["msg"].lower()
+        with patch.object(addr_svc.settings, "address_api_mock_on_failure", False):
+            with patch("httpx.AsyncClient.post", side_effect=TimeoutError("Connection timed out")):
+                resp = await client.get("/api/v1/address/generate", headers=auth_headers)
+                body = resp.json()
+
+                assert resp.status_code == 500
+                assert body["code"] == 500
+                assert "暂不可用" in body["msg"] or "timeout" in body["msg"].lower()
 
     @pytest.mark.unit
     async def test_address_service_http_error_returns_500(self, client, auth_headers):
         """
         【降级】外部 API 返回 5xx 时，同样返回 code=500。
         """
-        mock_response = AsyncMock()
+        import app.services.address_service as addr_svc
+        mock_response = MagicMock()
         mock_response.raise_for_status.side_effect = Exception("500 Internal Server Error")
 
-        with patch("httpx.AsyncClient.post", return_value=mock_response):
-            resp = await client.get("/api/v1/address/generate", headers=auth_headers)
-            body = resp.json()
+        with patch("httpx.AsyncClient.post", AsyncMock(return_value=mock_response)):
+            with patch.object(addr_svc.settings, "address_api_mock_on_failure", False):
+                resp = await client.get("/api/v1/address/generate", headers=auth_headers)
+                body = resp.json()
 
-            assert resp.status_code == 500
-            assert body["code"] == 500
+                assert resp.status_code == 500
+                assert body["code"] == 500
 
     @pytest.mark.unit
     async def test_address_service_missing_address_field_returns_500(self, client, auth_headers):
         """
         【防御】外部 API 返回成功但缺少 address 字段，不应 KeyError 崩溃。
         """
-        mock_response = AsyncMock()
+        import app.services.address_service as addr_svc
+        mock_response = MagicMock()
         mock_response.json.return_value = {"status": "ok"}  # 缺少 address
-        mock_response.raise_for_status = AsyncMock()
+        mock_response.raise_for_status.return_value = None
 
-        with patch("httpx.AsyncClient.post", return_value=mock_response):
-            resp = await client.get("/api/v1/address/generate", headers=auth_headers)
-            body = resp.json()
+        with patch("httpx.AsyncClient.post", AsyncMock(return_value=mock_response)):
+            with patch.object(addr_svc.settings, "address_api_mock_on_failure", False):
+                resp = await client.get("/api/v1/address/generate", headers=auth_headers)
+                body = resp.json()
 
-            assert resp.status_code == 500
-            assert body["code"] == 500
+                assert resp.status_code == 500
+                assert body["code"] == 500
 
     @pytest.mark.unit
     async def test_address_service_returns_mock_on_failure(self, client, auth_headers):
         """
         【降级策略】当外部 API 失败时，若配置了 MOCK 开关，返回 Mock 数据保证可用性。
-
-        建议开发时增加环境变量：ADDRESS_API_MOCK_ON_FAILURE=true
         """
-        # TODO: 若开发侧实现 Mock 降级，可在此验证 Mock 数据结构
-        pass
+        from unittest.mock import patch
+
+        with patch("httpx.AsyncClient.post", side_effect=Exception("External API down")):
+            resp = await client.get("/api/v1/address/generate", headers=auth_headers)
+            body = resp.json()
+
+            assert resp.status_code == 200
+            assert body["code"] == 200
+            assert isinstance(body["data"]["address"], dict)
+            assert body["data"]["address"]["Address"] == "1600 Amphitheatre Parkway"
 
 
 class TestAddressNoAuth:

@@ -106,16 +106,16 @@ class TestAuthMiddleware:
         3. 携带该 token 访问业务接口
         4. 期望 401
         """
-        # resp_login = await client.post("/api/v1/auth/login", json={...})
-        # token = resp_login.json()["data"]["token"]
-        # await redis_client.delete(f"token:{token}")
-        #
-        # resp = await client.get("/api/v1/address/generate", headers={"Authorization": f"Bearer {token}"})
-        # assert resp.status_code == 401
-        # assert resp.json()["code"] == 401
+        resp_login = await client.post("/api/v1/auth/login", json={
+            "account": test_user["account"],
+            "pwd": test_user["plain_pwd"]
+        })
+        token = resp_login.json()["data"]["token"]
+        await redis_client.delete(f"token:{token}")
 
-        # TODO: 开发完成后取消注释
-        pass
+        resp = await client.get("/api/v1/address/generate", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 401
+        assert resp.json()["code"] == 401
 
 
 class TestResponseUniformity:

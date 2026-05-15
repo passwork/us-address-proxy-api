@@ -100,9 +100,9 @@ class TestLoginEndpoint:
         assert resp.status_code == 422
 
     @pytest.mark.unit
-    async def test_login_empty_string_pwd_returns_400(self, client, test_user):
+    async def test_login_empty_string_pwd_returns_422(self, client, test_user):
         """
-        【边界】密码为空字符串，应视为无效，返回 400（而非 422，因为类型是对的）。
+        【边界】密码为空字符串，Pydantic min_length=1 校验拦截，返回 422。
         """
         resp = await client.post("/api/v1/auth/login", json={
             "account": test_user["account"],
@@ -110,8 +110,8 @@ class TestLoginEndpoint:
         })
         body = resp.json()
 
-        assert resp.status_code == 400
-        assert body["code"] == 400
+        assert resp.status_code == 422
+        assert body["code"] == 422
 
 
 class TestTokenStorage:
@@ -122,9 +122,9 @@ class TestTokenStorage:
         """
         【数据一致性】登录成功后，token 必须写入 Redis，且可检索。
 
-        期望的 Redis Key 设计（供开发参考）：
+        期望的 Redis Key 设计：
         - key:   token:{token_value}
-        - value: user_id 或用户 JSON
+        - value: user_id
         - ttl:   TOKEN_EXPIRE_SECONDS（如 3600s）
         """
         resp = await client.post("/api/v1/auth/login", json={
@@ -133,28 +133,23 @@ class TestTokenStorage:
         })
         token = resp.json()["data"]["token"]
 
-        # 验证 Redis 中存在该 token
-        # value = await redis_client.get(f"token:{token}")
-        # assert value is not None
-        # assert str(test_user["id"]) in value.decode()
-
-        # TODO: 开发完成后取消注释
-        pass
+        value = await redis_client.get(f"token:{token}")
+        assert value is not None
+        assert str(test_user["id"]) == value
 
     @pytest.mark.unit
     async def test_token_expires_after_ttl(self, client, test_user, redis_client):
         """
         【过期策略】Token 在 Redis 中的 TTL 应与配置一致（如 3600s）。
-        开发时可借助 Redis TTL 命令验证。
         """
-        # resp = await client.post("/api/v1/auth/login", ...)
-        # token = resp.json()["data"]["token"]
-        # ttl = await redis_client.ttl(f"token:{token}")
-        # assert ttl > 0
-        # assert ttl <= 3600
-
-        # TODO: 开发完成后取消注释
-        pass
+        resp = await client.post("/api/v1/auth/login", json={
+            "account": test_user["account"],
+            "pwd": test_user["plain_pwd"]
+        })
+        token = resp.json()["data"]["token"]
+        ttl = await redis_client.ttl(f"token:{token}")
+        assert ttl > 0
+        assert ttl <= 3600
 
 
 class TestPasswordSecurity:
@@ -180,8 +175,5 @@ class TestPasswordSecurity:
         """
         【安全】数据库中的 pwd 字段必须是 bcrypt 哈希，而非明文。
         """
-        # assert test_user["pwd"].startswith("$2b$")
-        # assert len(test_user["pwd"]) > 50
-
-        # TODO: 开发完成后取消注释
-        pass
+        assert test_user["pwd"].startswith("$2b$")
+        assert len(test_user["pwd"]) > 50
