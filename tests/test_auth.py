@@ -1,0 +1,187 @@
+"""
+登录模块 TDD 测试用例
+
+目标文件（待开发）：
+- app/api/auth.py         — 登录路由
+- app/core/security.py    — 密码哈希/Token 生成
+- app/schemas.py          — LoginRequest / TokenResponse
+- app/services/auth_service.py — 登录业务逻辑
+"""
+
+import pytest
+
+pytestmark = pytest.mark.auth
+
+
+class TestLoginEndpoint:
+    """POST /api/v1/auth/login"""
+
+    @pytest.mark.unit
+    async def test_login_success_returns_token(self, client, test_user):
+        """
+        【正向】使用正确的账号密码登录，返回 code=200、token、过期时间。
+
+        期望结构：
+        {
+          "code": 200,
+          "data": {"token": "...", "expires_in": 3600},
+          "msg": "success"
+        }
+        """
+        resp = await client.post("/api/v1/auth/login", json={
+            "account": test_user["account"],
+            "pwd": test_user["plain_pwd"]
+        })
+        body = resp.json()
+
+        assert resp.status_code == 200
+        assert body["code"] == 200
+        assert body["msg"] == "success"
+        assert "token" in body["data"]
+        assert "expires_in" in body["data"]
+        assert isinstance(body["data"]["token"], str)
+        assert len(body["data"]["token"]) > 0
+
+    @pytest.mark.unit
+    async def test_login_wrong_password_returns_400(self, client, test_user):
+        """
+        【异常】密码错误时，返回 code=400，不暴露具体是账号还是密码错。
+
+        开发约束：
+        - 必须做恒定时间比较（timing-safe），防止侧信道攻击
+        - 响应体不包含 "user not found" 或 "password incorrect" 等区分性描述
+        """
+        resp = await client.post("/api/v1/auth/login", json={
+            "account": test_user["account"],
+            "pwd": "wrong_password"
+        })
+        body = resp.json()
+
+        assert resp.status_code == 400
+        assert body["code"] == 400
+        assert body["data"] is None
+        assert "账号或密码错误" in body["msg"]
+
+    @pytest.mark.unit
+    async def test_login_nonexistent_user_returns_400(self, client):
+        """
+        【异常】账号不存在时，同样返回 code=400，与密码错误不可区分。
+        """
+        resp = await client.post("/api/v1/auth/login", json={
+            "account": "not_exist_user",
+            "pwd": "any_password"
+        })
+        body = resp.json()
+
+        assert resp.status_code == 400
+        assert body["code"] == 400
+        assert body["data"] is None
+
+    @pytest.mark.unit
+    async def test_login_missing_account_returns_422(self, client):
+        """
+        【参数校验】缺少 account 字段，FastAPI Pydantic 自动校验返回 422。
+        """
+        resp = await client.post("/api/v1/auth/login", json={
+            "pwd": "123456"
+        })
+
+        assert resp.status_code == 422
+
+    @pytest.mark.unit
+    async def test_login_missing_pwd_returns_422(self, client):
+        """
+        【参数校验】缺少 pwd 字段，FastAPI Pydantic 自动校验返回 422。
+        """
+        resp = await client.post("/api/v1/auth/login", json={
+            "account": "test"
+        })
+
+        assert resp.status_code == 422
+
+    @pytest.mark.unit
+    async def test_login_empty_string_pwd_returns_400(self, client, test_user):
+        """
+        【边界】密码为空字符串，应视为无效，返回 400（而非 422，因为类型是对的）。
+        """
+        resp = await client.post("/api/v1/auth/login", json={
+            "account": test_user["account"],
+            "pwd": ""
+        })
+        body = resp.json()
+
+        assert resp.status_code == 400
+        assert body["code"] == 400
+
+
+class TestTokenStorage:
+    """Token 在 Redis 中的存储规则验证"""
+
+    @pytest.mark.unit
+    async def test_login_token_stored_in_redis(self, client, test_user, redis_client):
+        """
+        【数据一致性】登录成功后，token 必须写入 Redis，且可检索。
+
+        期望的 Redis Key 设计（供开发参考）：
+        - key:   token:{token_value}
+        - value: user_id 或用户 JSON
+        - ttl:   TOKEN_EXPIRE_SECONDS（如 3600s）
+        """
+        resp = await client.post("/api/v1/auth/login", json={
+            "account": test_user["account"],
+            "pwd": test_user["plain_pwd"]
+        })
+        token = resp.json()["data"]["token"]
+
+        # 验证 Redis 中存在该 token
+        # value = await redis_client.get(f"token:{token}")
+        # assert value is not None
+        # assert str(test_user["id"]) in value.decode()
+
+        # TODO: 开发完成后取消注释
+        pass
+
+    @pytest.mark.unit
+    async def test_token_expires_after_ttl(self, client, test_user, redis_client):
+        """
+        【过期策略】Token 在 Redis 中的 TTL 应与配置一致（如 3600s）。
+        开发时可借助 Redis TTL 命令验证。
+        """
+        # resp = await client.post("/api/v1/auth/login", ...)
+        # token = resp.json()["data"]["token"]
+        # ttl = await redis_client.ttl(f"token:{token}")
+        # assert ttl > 0
+        # assert ttl <= 3600
+
+        # TODO: 开发完成后取消注释
+        pass
+
+
+class TestPasswordSecurity:
+    """密码安全策略验证"""
+
+    @pytest.mark.unit
+    async def test_password_never_returned_in_response(self, client, test_user):
+        """
+        【安全】任何接口（包括登录成功响应）都不得返回密码或密码哈希。
+        """
+        resp = await client.post("/api/v1/auth/login", json={
+            "account": test_user["account"],
+            "pwd": test_user["plain_pwd"]
+        })
+        raw_text = resp.text
+
+        assert "pwd" not in raw_text.lower()
+        assert "password" not in raw_text.lower()
+        assert "$2b$" not in raw_text  # bcrypt 前缀
+
+    @pytest.mark.unit
+    async def test_password_is_hashed_in_db(self, test_user):
+        """
+        【安全】数据库中的 pwd 字段必须是 bcrypt 哈希，而非明文。
+        """
+        # assert test_user["pwd"].startswith("$2b$")
+        # assert len(test_user["pwd"]) > 50
+
+        # TODO: 开发完成后取消注释
+        pass
