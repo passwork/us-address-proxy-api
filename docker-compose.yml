@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: us_address_redis
+    ports:
+      - "6379:6379"
+
+  app:
+    build: .
+    container_name: us_address_app
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite+aiosqlite:///./dev.db
+    depends_on:
+      - redis
+    command: >
+      sh -c "python scripts/init_db.py &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
