@@ -1,0 +1,11 @@
+[project]
+name = "us-address-proxy-service"
+version = "0.1.0"
+description = "FastAPI-based US address generation proxy service with auth"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = {text = "MIT"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

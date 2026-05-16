@@ -4,6 +4,7 @@
 
 ## 技术栈
 
+- **Python**: 3.11 / 3.12（推荐），**不支持 3.13+**
 - **Web 框架**: FastAPI 0.111.0
 - **数据库**: PostgreSQL (Docker 默认) / SQLite (本地开发/测试)
 - **ORM**: SQLAlchemy 2.0 (async)
