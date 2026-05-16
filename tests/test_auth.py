@@ -171,3 +171,62 @@ class TestPasswordSecurity:
         """
         assert test_user["pwd"].startswith("$2b$")
         assert len(test_user["pwd"]) > 50
+
+
+class TestLogoutEndpoint:
+    """POST /api/v1/auth/logout"""
+
+    @pytest.mark.unit
+    async def test_logout_success_deletes_token(self, client, auth_headers, redis_client):
+        """
+        【正向】携带有效 Token 登出，返回 code=200，且 Redis 中 token 被删除。
+        """
+        token = auth_headers["Authorization"].replace("Bearer ", "")
+        assert await redis_client.get(f"token:{token}") is not None
+
+        resp = await client.post("/api/v1/auth/logout", headers=auth_headers)
+        body = resp.json()
+
+        assert resp.status_code == 200
+        assert body["code"] == 200
+        assert body["msg"] == "success"
+        assert await redis_client.get(f"token:{token}") is None
+
+    @pytest.mark.unit
+    async def test_logout_without_auth_returns_401(self, client):
+        """
+        【异常】无 Token 登出返回 401。
+        """
+        resp = await client.post("/api/v1/auth/logout")
+        body = resp.json()
+
+        assert resp.status_code == 401
+        assert body["code"] == 401
+
+    @pytest.mark.unit
+    async def test_logout_with_invalid_token_returns_401(self, client):
+        """
+        【异常】伪造 Token 登出返回 401。
+        """
+        resp = await client.post(
+            "/api/v1/auth/logout",
+            headers={"Authorization": "Bearer fake_token_123"}
+        )
+        body = resp.json()
+
+        assert resp.status_code == 401
+        assert body["code"] == 401
+
+    @pytest.mark.unit
+    async def test_token_invalidated_after_logout(self, client, auth_headers):
+        """
+        【主动失效】登出后再用原 Token 访问业务接口，应返回 401。
+        """
+        resp_logout = await client.post("/api/v1/auth/logout", headers=auth_headers)
+        assert resp_logout.status_code == 200
+
+        resp = await client.get("/api/v1/address/generate", headers=auth_headers)
+        body = resp.json()
+
+        assert resp.status_code == 401
+        assert body["code"] == 401

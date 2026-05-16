@@ -95,7 +95,43 @@
 
 ---
 
-## 2. 美国地址生成接口
+## 2. 登出接口
+
+### POST `/api/v1/auth/logout`
+
+用户登出，删除 Redis 中的 Token，实现主动失效。
+
+**请求头**：
+
+```http
+Authorization: Bearer <token>
+```
+
+**成功响应 (200)**：
+
+```json
+{
+  "code": 200,
+  "data": null,
+  "msg": "success"
+}
+```
+
+**失败响应示例**：
+
+- 未授权 / Token 无效 (401)
+
+```json
+{
+  "code": 401,
+  "data": null,
+  "msg": "Token已过期或无效"
+}
+```
+
+---
+
+## 3. 美国地址生成接口
 
 ### GET `/api/v1/address/generate`
 
@@ -193,7 +229,7 @@ Authorization: Bearer <token>
 
 ---
 
-## 3. 白名单接口（免鉴权）
+## 4. 白名单接口（免鉴权）
 
 以下接口无需携带 Token 即可访问：
 
@@ -221,14 +257,23 @@ Content-Type: application/json
 
 从响应中提取 `data.token`。
 
-### 步骤 2：调用地址生成接口
+### 步骤 2：登出（可选，验证 Token 主动失效）
+
+```http
+POST http://localhost:8000/api/v1/auth/logout
+Authorization: Bearer <步骤1获取的token>
+```
+
+登出后，该 Token 立即失效，再次调用业务接口将返回 401。
+
+### 步骤 3：调用地址生成接口
 
 ```http
 GET http://localhost:8000/api/v1/address/generate
 Authorization: Bearer <步骤1获取的token>
 ```
 
-### 步骤 3：验证鉴权拦截
+### 步骤 4：验证鉴权拦截
 
 不带 `Authorization` Header 直接调用地址接口，应返回 401。
 
