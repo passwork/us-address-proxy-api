@@ -50,7 +50,8 @@ docker-compose up --build
 
 ```bash
 # 启动 PostgreSQL 与 Redis（如未安装，可用 Docker 快速启动）
-docker run -d -p 5432:5432 -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=us_address_proxy postgres:15-alpine
+# 注意：项目默认连接 localhost:5433，请确保映射到该端口
+docker run -d -p 5433:5432 -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=us_address_proxy postgres:15-alpine
 docker run -d -p 6379:6379 redis:7-alpine
 ```
 
