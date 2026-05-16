@@ -1,11 +1,5 @@
 """
-登录模块 TDD 测试用例
-
-目标文件（待开发）：
-- app/api/auth.py         — 登录路由
-- app/core/security.py    — 密码哈希/Token 生成
-- app/schemas.py          — LoginRequest / TokenResponse
-- app/services/auth_service.py — 登录业务逻辑
+登录模块测试用例
 """
 
 import pytest

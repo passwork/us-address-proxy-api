@@ -16,7 +16,7 @@ if (-not (Test-Path $VenvDir)) {
 # 2. Activate and install dependencies
 Write-Host "Installing dependencies..."
 $ActivateScript = Join-Path $VenvDir "Scripts\Activate.ps1"
-& $ActivateScript
+. $ActivateScript
 
 python -m pip install --upgrade pip
 python -m pip install -r (Join-Path $ProjectDir "requirements.txt")

@@ -1,10 +1,5 @@
 """
-鉴权中间件与白名单 TDD 测试用例
-
-目标文件（待开发）：
-- app/deps.py           — get_current_user / verify_token 依赖
-- app/core/whitelist.py — 白名单判断逻辑
-- app/main.py           — 全局异常处理器
+鉴权中间件与白名单测试用例
 """
 
 import pytest

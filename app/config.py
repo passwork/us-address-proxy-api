@@ -1,7 +1,9 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
     app_env: str = "development"
     secret_key: str = "dev-secret-key"
 
@@ -15,10 +17,6 @@ class Settings(BaseSettings):
     address_api_referer: str = "https://www.meiguodizhi.com/"
     address_api_timeout: float = 10.0
     address_api_mock_on_failure: bool = True
-
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
 
 
 settings = Settings()

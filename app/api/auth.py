@@ -8,7 +8,7 @@ from app.core.exceptions import BizException
 from app.core.security import create_token, verify_password
 from app.database import get_db
 from app.models import User
-from app.schemas import BaseResponse, LoginRequest, LoginResponse
+from app.schemas import LoginRequest, LoginResponse
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 

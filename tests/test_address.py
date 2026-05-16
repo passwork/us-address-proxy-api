@@ -1,13 +1,5 @@
 """
-业务接口（美国地址生成）TDD 测试用例
-
-目标文件（待开发）：
-- app/api/address.py              — 业务路由
-- app/services/address_service.py — 外部 API 调用封装
-- app/core/exceptions.py          — 自定义业务异常
-
-外部依赖：
-- https://www.meiguodizhi.com/api/v1/dz
+业务接口（美国地址生成）测试用例
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
