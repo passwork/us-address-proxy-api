@@ -122,8 +122,6 @@ class TestAddressFailure:
         """
         【降级策略】当外部 API 失败时，若配置了 MOCK 开关，返回 Mock 数据保证可用性。
         """
-        from unittest.mock import patch
-
         with patch("httpx.AsyncClient.post", side_effect=Exception("External API down")):
             resp = await client.get("/api/v1/address/generate", headers=auth_headers)
             body = resp.json()

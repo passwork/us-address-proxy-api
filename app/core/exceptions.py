@@ -17,13 +17,6 @@ async def biz_exception_handler(_request: Request, exc: BizException) -> JSONRes
     )
 
 
-async def validation_exception_handler(_request: Request, exc: Exception) -> JSONResponse:
-    return JSONResponse(
-        status_code=422,
-        content=BaseResponse(code=422, data=None, msg="请求参数校验失败").model_dump(),
-    )
-
-
 async def generic_exception_handler(_request: Request, _exc: Exception) -> JSONResponse:
     return JSONResponse(
         status_code=500,

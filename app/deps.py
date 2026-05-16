@@ -1,15 +1,8 @@
 from fastapi import Header, Request
-from fastapi.param_functions import Depends
 
-from app.config import settings
 from app.core import redis as redis_module
 from app.core.exceptions import BizException
 from app.core.whitelist import is_whitelisted
-from app.database import AsyncSessionLocal
-
-
-async def get_redis():
-    yield redis_module.redis_client
 
 
 async def get_current_user(request: Request, authorization: str = Header(None)) -> str:

@@ -5,12 +5,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.api import auth, address
-from app.config import settings
 from app.core.exceptions import (
     BizException,
     biz_exception_handler,
     generic_exception_handler,
-    validation_exception_handler,
 )
 from app.database import Base, engine
 from app.schemas import BaseResponse
