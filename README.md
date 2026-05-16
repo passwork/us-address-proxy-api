@@ -6,7 +6,7 @@
 
 - **Python**: 3.11 / 3.12（推荐），**不支持 3.13+**
 - **Web 框架**: FastAPI 0.111.0
-- **数据库**: PostgreSQL (Docker 默认) / SQLite (本地开发/测试)
+- **数据库**: PostgreSQL
 - **ORM**: SQLAlchemy 2.0 (async)
 - **缓存/会话**: Redis
 - **密码哈希**: bcrypt
@@ -44,9 +44,17 @@ docker-compose up --build
 
 ## 本地开发启动
 
-> 适用于已安装 Python 3.11+ 的环境。数据库使用 SQLite，Redis 可用 Docker 快速启动。
+> 适用于已安装 Python 3.11+ 且本地已运行 PostgreSQL 与 Redis 的环境。
 
-### 一键脚本（推荐）
+### 环境准备
+
+```bash
+# 启动 PostgreSQL 与 Redis（如未安装，可用 Docker 快速启动）
+docker run -d -p 5432:5432 -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=us_address_proxy postgres:15-alpine
+docker run -d -p 6379:6379 redis:7-alpine
+```
+
+### 一键脚本
 
 ```bash
 # Linux / macOS
@@ -67,13 +75,10 @@ source venv/bin/activate        # Linux/Mac
 # .\venv\Scripts\activate       # Windows
 pip install -r requirements.txt
 
-# 2. 启动 Redis（如未安装，可用 Docker 快速启动）
-docker run -d -p 6379:6379 redis:7-alpine
-
-# 3. 初始化测试数据
+# 2. 初始化测试数据
 python scripts/init_db.py
 
-# 4. 启动服务
+# 3. 启动服务
 uvicorn app.main:app --reload --port 8000
 ```
 

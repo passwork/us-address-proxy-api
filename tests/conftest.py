@@ -3,7 +3,7 @@ TDD 测试基础设施配置
 
 提供：
 - 异步 TestClient (httpx.AsyncClient)
-- 内存数据库/SQLite 测试会话
+- PostgreSQL 测试会话
 - Redis mock (fakeredis)
 - 测试数据工厂（测试用户 seed）
 """
@@ -22,7 +22,7 @@ from sqlalchemy.orm import sessionmaker
 # =============================================================================
 
 os.environ["APP_ENV"] = "testing"
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ["DATABASE_URL"] = "postgresql+asyncpg://user:password@localhost:5433/us_address_proxy"
 os.environ["REDIS_URL"] = "redis://localhost:6379/15"
 os.environ["SECRET_KEY"] = "test-secret-key-only-for-tdd"
 os.environ["TOKEN_EXPIRE_SECONDS"] = "3600"
@@ -32,7 +32,7 @@ from app import config as config_module
 
 config_module.settings = Settings(
     app_env="testing",
-    database_url="sqlite+aiosqlite:///:memory:",
+    database_url="postgresql+asyncpg://user:password@localhost:5433/us_address_proxy",
     redis_url="redis://localhost:6379/15",
     secret_key="test-secret-key-only-for-tdd",
     token_expire_seconds=3600,
@@ -50,8 +50,14 @@ from app.models import User
 
 @pytest_asyncio.fixture(scope="session")
 async def db_engine():
-    """创建异步内存数据库引擎，并在测试会话结束后销毁。"""
-    from app.database import engine
+    """创建测试专用数据库引擎（NullPool 避免连接复用冲突），并在测试会话结束后销毁。"""
+    from sqlalchemy.pool import NullPool
+    engine = create_async_engine(
+        "postgresql+asyncpg://user:password@localhost:5433/us_address_proxy",
+        echo=False,
+        future=True,
+        poolclass=NullPool,
+    )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield engine
@@ -84,25 +90,28 @@ async def redis_client():
 # =============================================================================
 
 @pytest_asyncio.fixture
-async def client(db_session, redis_client) -> AsyncGenerator[AsyncClient, None]:
+async def client(db_engine, redis_client) -> AsyncGenerator[AsyncClient, None]:
     """
     提供基于 httpx.AsyncClient 的异步测试客户端。
-    自动注入测试用的 db_session 和 redis_client 到 app 的依赖中。
+    自动注入独立的 db_session 和 redis_client 到 app 的依赖中，
+    避免与 test_user 等 fixture 共享同一个 asyncpg 连接。
     """
     from app.core import redis as redis_module
 
-    async def override_get_db():
-        yield db_session
+    async_session = sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
+    async with async_session() as session:
+        async def override_get_db():
+            yield session
 
-    async def override_get_redis():
-        yield redis_client
+        async def override_get_redis():
+            yield redis_client
 
-    app.dependency_overrides[get_db] = override_get_db
-    redis_module.redis_client = redis_client
+        app.dependency_overrides[get_db] = override_get_db
+        redis_module.redis_client = redis_client
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
-        yield ac
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
+            yield ac
 
     app.dependency_overrides.clear()
 

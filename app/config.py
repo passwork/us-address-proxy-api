@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     secret_key: str = "dev-secret-key"
 
-    database_url: str = "sqlite+aiosqlite:///./dev.db"
+    database_url: str = "postgresql+asyncpg://user:password@localhost:5433/us_address_proxy"
 
     redis_url: str = "redis://localhost:6379/0"
 
