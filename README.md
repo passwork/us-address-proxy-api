@@ -37,6 +37,23 @@ docker-compose up --build
 # us_address_app  | INFO:     Uvicorn running on http://0.0.0.0:8000
 ```
 
+> **国内用户网络加速提示**
+>
+> 如果构建时拉取基础镜像超时或失败（如 `python:3.11-slim`、`postgres:15-alpine` 等），
+> 建议在 Docker Desktop 中配置镜像加速：
+>
+> **Settings → Docker Engine**，在 JSON 中添加：
+> ```json
+> {
+>   "registry-mirrors": [
+>     "https://docker.1ms.run",
+>     "https://docker.xuanyuan.me",
+>     "https://docker.m.daocloud.io"
+>   ]
+> }
+> ```
+> 点击 **Apply & Restart** 后重新执行 `docker-compose up --build`。
+
 服务启动后：
 - API 文档: http://localhost:8000/docs
 - OpenAPI 规范: http://localhost:8000/openapi.json
@@ -118,7 +135,6 @@ uvicorn app.main:app --reload --port 8000
 ├── tests/             # TDD 测试套件 (28 个用例)
 ├── docs/              # 项目文档 + Postman Collection
 ├── scripts/           # 数据初始化 + venv 安装脚本
-├── alembic/           # 数据库迁移
 ├── Dockerfile         # Docker 镜像构建
 ├── docker-compose.yml # Docker Compose 编排
 └── requirements.txt   # Python 依赖
