@@ -129,6 +129,9 @@ dmypy.json
 *.swo
 *~
 
+# Claude
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db
