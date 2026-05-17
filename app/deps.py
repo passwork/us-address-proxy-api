@@ -8,13 +8,8 @@ from app.core.whitelist import is_whitelisted
 security = HTTPBearer(auto_error=False)
 
 
-async def get_current_user(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(security),
-) -> str:
-    if is_whitelisted(request.url.path):
-        return ""
-
+async def _verify_token(credentials: HTTPAuthorizationCredentials | None) -> str:
+    """验证 Token 有效性，返回 user_id。供 get_current_user 和 logout 复用。"""
     if not credentials or credentials.scheme != "Bearer":
         raise BizException(code=401, msg="未授权，缺少有效Token")
 
@@ -23,3 +18,13 @@ async def get_current_user(
         raise BizException(code=401, msg="Token已过期或无效")
 
     return user_id
+
+
+async def get_current_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+) -> str:
+    if is_whitelisted(request.url.path):
+        return ""
+
+    return await _verify_token(credentials)

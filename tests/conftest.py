@@ -51,6 +51,7 @@ from app.models import User
 @pytest_asyncio.fixture(scope="session")
 async def db_engine():
     """创建测试专用数据库引擎（NullPool 避免连接复用冲突），并在测试会话结束后销毁。"""
+    import pytest
     from sqlalchemy.pool import NullPool
     engine = create_async_engine(
         "postgresql+asyncpg://user:password@localhost:5433/us_address_proxy",
@@ -58,8 +59,16 @@ async def db_engine():
         future=True,
         poolclass=NullPool,
     )
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as e:
+        await engine.dispose()
+        pytest.fail(
+            f"无法连接到测试数据库。请确保 PostgreSQL 已启动：\n"
+            f"  docker run -d -p 5433:5432 -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=us_address_proxy postgres:15-alpine\n"
+            f"原始错误: {e}"
+        )
     yield engine
     await engine.dispose()
 

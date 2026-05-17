@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import auth, address
 from app.core.exceptions import (
@@ -10,14 +11,11 @@ from app.core.exceptions import (
     biz_exception_handler,
     generic_exception_handler,
 )
-from app.database import Base, engine
 from app.schemas import BaseResponse
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
     yield
 
 
@@ -38,11 +36,17 @@ async def custom_422_handler(request: Request, exc):
     )
 
 
-@app.exception_handler(404)
-async def custom_404_handler(request: Request, exc):
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404:
+        return JSONResponse(
+            status_code=404,
+            content=BaseResponse(code=404, data=None, msg="接口不存在").model_dump(),
+        )
+    detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
     return JSONResponse(
-        status_code=404,
-        content=BaseResponse(code=404, data=None, msg="接口不存在").model_dump(),
+        status_code=exc.status_code,
+        content=BaseResponse(code=exc.status_code, data=None, msg=detail or "请求错误").model_dump(),
     )
 
 
