@@ -24,6 +24,17 @@
 ### 启动步骤
 
 ```bash
+# 0. （国内用户必读）配置 Docker 镜像加速，否则拉取基础镜像会超时失败
+#    Docker Desktop → Settings → Docker Engine，在 JSON 中添加：
+#    {
+#      "registry-mirrors": [
+#        "https://docker.1ms.run",
+#        "https://docker.xuanyuan.me",
+#        "https://docker.m.daocloud.io"
+#      ]
+#    }
+#    点击 Apply & Restart
+
 # 1. 克隆项目
 git clone https://github.com/passwork/us-address-proxy-api.git
 cd us-address-proxy-api
@@ -36,23 +47,6 @@ docker-compose up --build
 # us_address_app  | INFO:     Application startup complete.
 # us_address_app  | INFO:     Uvicorn running on http://0.0.0.0:8000
 ```
-
-> **国内用户网络加速提示**
->
-> 如果构建时拉取基础镜像超时或失败（如 `python:3.11-slim`、`postgres:15-alpine` 等），
-> 建议在 Docker Desktop 中配置镜像加速：
->
-> **Settings → Docker Engine**，在 JSON 中添加：
-> ```json
-> {
->   "registry-mirrors": [
->     "https://docker.1ms.run",
->     "https://docker.xuanyuan.me",
->     "https://docker.m.daocloud.io"
->   ]
-> }
-> ```
-> 点击 **Apply & Restart** 后重新执行 `docker-compose up --build`。
 
 服务启动后：
 - API 文档: http://localhost:8000/docs
